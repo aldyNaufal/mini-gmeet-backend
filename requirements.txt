@@ -5,3 +5,6 @@ python-multipart
 websockets
 aiohttp
 python-multipart
+livekit
+python-dotenv
+livekit-api
