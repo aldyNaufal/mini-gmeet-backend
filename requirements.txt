@@ -1,10 +1,7 @@
 fastapi
-uvicorn
-pydantic
-python-multipart
-websockets
-aiohttp
-python-multipart
+uvicorn[standard]
 livekit
 python-dotenv
-livekit-api
+pydantic
+PyJWT
+livekit
