@@ -4,4 +4,4 @@ livekit
 python-dotenv
 pydantic
 PyJWT
-livekit
+livekit-api
