@@ -9,7 +9,8 @@ import logging
 from typing import Optional, List
 import asyncio
 import uvicorn
-from datetime import timedelta  # Add this import
+from datetime import timedelta 
+from fastapi.responses import JSONResponse
 
 # Load environment variables
 load_dotenv()
@@ -352,18 +353,21 @@ async def mute_participant(room_name: str, participant_identity: str):
 # Error handlers
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
-    return {
-        "error": "Endpoint not found",
-        "message": "The requested endpoint does not exist",
-        "available_endpoints": [
-            "/api/livekit/token",
-            "/api/livekit/room",
-            "/api/livekit/rooms",
-            "/api/livekit/room/{room_name}",
-            "/api/livekit/room/{room_name}/participants",
-            "/health"
-        ]
-    }
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "Endpoint not found",
+            "message": "The requested endpoint does not exist",
+            "available_endpoints": [
+                "/api/livekit/token",
+                "/api/livekit/room",
+                "/api/livekit/rooms",
+                "/api/livekit/room/{room_name}",
+                "/api/livekit/room/{room_name}/participants",
+                "/health"
+            ]
+        }
+    )
 
 if __name__ == "__main__":
     uvicorn.run(
