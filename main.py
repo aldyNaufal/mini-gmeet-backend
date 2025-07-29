@@ -48,13 +48,17 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for Vercel frontend
+# FIXED: Configure CORS properly for Vercel frontend
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",  # Vite dev server
-    "https://*.vercel.app",  # Your Vercel domain
-    "https://mini-gmeet-frontend-git-main-aldynaufals-projects.vercel.app/room",  # Replace with your actual domain
+    "https://mini-gmeet-frontend.vercel.app",  # Your actual Vercel domain
+    "https://mini-gmeet-frontend-git-main-aldynaufals-projects.vercel.app",  # Git branch domain
+    # Add any other specific Vercel preview URLs you need
 ]
+
+# ALTERNATIVE: Allow all origins for development (NOT recommended for production)
+# ALLOWED_ORIGINS = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -63,6 +67,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Add this debug endpoint to check CORS settings
+@app.get("/cors-debug")
+async def cors_debug():
+    return {
+        "allowed_origins": ALLOWED_ORIGINS,
+        "message": "CORS configuration debug info"
+    }
 
 # Include routers
 app.include_router(room_router, prefix="/api", tags=["Room Management"])
