@@ -1,3 +1,4 @@
+# models/schemas.py
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -6,6 +7,7 @@ class TokenRequest(BaseModel):
     roomName: str
     participantName: str
     metadata: Optional[str] = None
+    maxParticipants: Optional[int] = 100  # Added this field!
 
 class TokenResponse(BaseModel):
     token: str
@@ -16,7 +18,7 @@ class TokenResponse(BaseModel):
 # Room-related models
 class CreateRoomRequest(BaseModel):
     roomName: str
-    maxParticipants: Optional[int] = 50
+    maxParticipants: Optional[int] = 100  # Updated default
     metadata: Optional[str] = None
 
 class RoomInfo(BaseModel):

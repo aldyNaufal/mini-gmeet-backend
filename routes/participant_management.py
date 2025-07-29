@@ -1,3 +1,4 @@
+# routes/participant_management.py
 from fastapi import APIRouter, HTTPException, status
 from livekit import api
 import logging
@@ -30,14 +31,15 @@ async def generate_livekit_token(request: TokenRequest):
         api_secret = os.getenv("LIVEKIT_API_SECRET")
         ws_url = os.getenv("LIVEKIT_URL")
         
-        if not api_key or not api_secret or not ws_url:
+        if not api_key or not api_secret or ws_url:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="LiveKit credentials are not set"
             )
         
-        # Auto-create room if it doesn't exist
-        await ensure_room_exists(request.roomName)
+        # Auto-create room if it doesn't exist with configurable max participants
+        max_participants = getattr(request, 'maxParticipants', 100)  # Default to 100
+        await ensure_room_exists(request.roomName, max_participants)
         
         # Create access token
         token = api.AccessToken(api_key, api_secret)
@@ -80,7 +82,7 @@ async def generate_livekit_token(request: TokenRequest):
             detail=f"Failed to generate access token: {str(e)}"
         )
 
-async def ensure_room_exists(room_name: str):
+async def ensure_room_exists(room_name: str, max_participants: int = 100):
     """Ensure a room exists, create it if it doesn't"""
     try:
         # Use the context manager for proper cleanup
@@ -98,18 +100,19 @@ async def ensure_room_exists(room_name: str):
             # Create room if it doesn't exist
             room_opts = api.CreateRoomRequest(
                 name=room_name,
-                max_participants=50,
+                max_participants=max_participants,  # Now configurable!
                 metadata=""
             )
             
             room = await lk_api.room.create_room(room_opts)
-            logger.info(f"Successfully created room: {room_name} with SID: {room.sid}")
+            logger.info(f"Successfully created room: {room_name} with SID: {room.sid} (max: {max_participants} participants)")
             
     except Exception as e:
         logger.error(f"Error ensuring room exists: {str(e)}")
         # Don't raise here - room might exist but listing failed
         # The token will still work if the room exists
 
+# Rest of your existing code remains the same...
 @router.get("/room/{room_name}/participants")
 async def get_room_participants(room_name: str):
     """
