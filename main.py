@@ -53,7 +53,7 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",  # Vite dev server
     "https://*.vercel.app",  # Your Vercel domain
-    "https://mini-gmeet-frontend-git-main-aldynaufals-projects.vercel.app",  # Replace with your actual domain
+    "https://mini-gmeet-frontend-git-main-aldynaufals-projects.vercel.app/room",  # Replace with your actual domain
 ]
 
 app.add_middleware(
