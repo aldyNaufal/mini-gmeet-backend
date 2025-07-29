@@ -48,15 +48,33 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS
+# Configure CORS for production deployment
+allowed_origins = [
+    "http://localhost:5173",  # Keep for local development
+    "https://localhost:5173",  # HTTPS local development
+]
+
+# Add production frontend URL from environment variable
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+    logger.info(f"Added frontend URL to CORS: {frontend_url}")
+
+# Allow all Vercel preview deployments
+allowed_origins.extend([
+    "https://*.vercel.app",
+    "https://*.vercel.com"
+])
+
+# In development, allow all origins for easier testing
+if os.getenv("ENVIRONMENT") == "development":
+    allowed_origins = ["*"]
+    logger.info("Development mode: allowing all CORS origins")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Local development
-        "https://mini-gmeet-frontend.vercel.app",  
-        "https://*.vercel.app",  
-    ],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=True,  
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -70,6 +88,8 @@ async def root():
     return {
         "message": "LiveKit Video Conference API",
         "status": "running",
+        "environment": os.getenv("ENVIRONMENT", "production"),
+        "frontend_url": os.getenv("FRONTEND_URL", "not set"),
         "endpoints": {
             "generate_token": "/api/livekit/token",
             "create_room": "/api/livekit/room",
@@ -80,18 +100,21 @@ async def root():
         }
     }
 
-
 @app.get("/health")
 async def health_check():
+    """Health check endpoint for Railway deployment"""
+    livekit_configured = bool(
+        os.getenv("LIVEKIT_API_KEY") and 
+        os.getenv("LIVEKIT_API_SECRET") and 
+        os.getenv("LIVEKIT_URL")
+    )
+    
     return {
         "status": "healthy",
-        "environment": "production" if os.getenv("RAILWAY_ENVIRONMENT") else "development",
-        "livekit_configured": bool(
-            os.getenv("LIVEKIT_API_KEY") and 
-            os.getenv("LIVEKIT_API_SECRET") and 
-            os.getenv("LIVEKIT_URL")
-        ),
-        "port": os.getenv("PORT", "8000")
+        "livekit_configured": livekit_configured,
+        "environment": os.getenv("ENVIRONMENT", "production"),
+        "frontend_url": os.getenv("FRONTEND_URL", "not set"),
+        "cors_origins": len(allowed_origins) if allowed_origins != ["*"] else "all"
     }
 
 # Error handlers
@@ -113,11 +136,30 @@ async def not_found_handler(request, exc):
         }
     )
 
+@app.exception_handler(500)
+async def internal_server_error_handler(request, exc):
+    logger.error(f"Internal server error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "message": "An unexpected error occurred. Please try again later."
+        }
+    )
+
 if __name__ == "__main__":
+    # Railway provides PORT environment variable
+    port = int(os.getenv("PORT", 8000))
+    
+    # Use reload=False in production
+    reload_mode = os.getenv("ENVIRONMENT") == "development"
+    
+    logger.info(f"Starting server on port {port} with reload={reload_mode}")
+    
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=port,
+        reload=reload_mode,
         log_level="info"
     )
