@@ -31,7 +31,9 @@ async def generate_livekit_token(request: TokenRequest):
         api_secret = os.getenv("LIVEKIT_API_SECRET")
         ws_url = os.getenv("LIVEKIT_URL")
         
-        if not api_key or not api_secret or ws_url:
+        # FIX: Changed condition to properly check if any credential is missing
+        if not api_key or not api_secret or not ws_url:
+            logger.error(f"Missing credentials - API Key: {bool(api_key)}, API Secret: {bool(api_secret)}, URL: {bool(ws_url)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="LiveKit credentials are not set"
