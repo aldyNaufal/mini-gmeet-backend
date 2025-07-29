@@ -51,8 +51,12 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend domain
-    allow_credentials=True,  
+    allow_origins=[
+        "http://localhost:5173",  # Local development
+        "https://mini-gmeet-frontend.vercel.app",  
+        "https://*.vercel.app",  
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -76,15 +80,18 @@ async def root():
         }
     }
 
+
 @app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
+        "environment": "production" if os.getenv("RAILWAY_ENVIRONMENT") else "development",
         "livekit_configured": bool(
             os.getenv("LIVEKIT_API_KEY") and 
             os.getenv("LIVEKIT_API_SECRET") and 
             os.getenv("LIVEKIT_URL")
-        )
+        ),
+        "port": os.getenv("PORT", "8000")
     }
 
 # Error handlers
