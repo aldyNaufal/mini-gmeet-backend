@@ -1,5 +1,3 @@
-# main.py - Production Updates
-
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -17,11 +15,8 @@ from config.livekit_config import validate_environment, livekit_manager
 # Load environment variables
 load_dotenv()
 
-# Configure logging for production
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -50,35 +45,20 @@ app = FastAPI(
     title="LiveKit Video Conference API",
     description="Complete LiveKit integration for video conferencing",
     version="1.0.0",
-    lifespan=lifespan,
-    # PRODUCTION: Disable docs in production for security
-    docs_url="/docs" if os.getenv("RAILWAY_ENVIRONMENT") != "production" else None,
-    redoc_url="/redoc" if os.getenv("RAILWAY_ENVIRONMENT") != "production" else None,
+    lifespan=lifespan
 )
 
-# PRODUCTION CORS Configuration
-def get_allowed_origins():
-    """Get allowed origins based on environment"""
-    # Default development origins
-    default_origins = [
-        "http://localhost:3000",
-        "http://localhost:5173",  # Vite dev server
-    ]
-    
-    # Add production origins from environment variable
-    env_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
-    env_origins = [origin.strip() for origin in env_origins if origin.strip()]
-    
-    # If production origins are set, use them; otherwise use defaults
-    if env_origins:
-        return env_origins
-    else:
-        return default_origins + [
-            "https://mini-gmeet-frontend.vercel.app",
-            "https://mini-gmeet-frontend-git-main-aldynaufals-projects.vercel.app",
-        ]
+# FIXED: Configure CORS properly for Vercel frontend
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",  # Vite dev server
+    "https://mini-gmeet-frontend.vercel.app",  # Your actual Vercel domain
+    "https://mini-gmeet-frontend-git-main-aldynaufals-projects.vercel.app",  # Git branch domain
+    # Add any other specific Vercel preview URLs you need
+]
 
-ALLOWED_ORIGINS = get_allowed_origins()
+# ALTERNATIVE: Allow all origins for development (NOT recommended for production)
+# ALLOWED_ORIGINS = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,17 +68,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# PRODUCTION: Add security headers middleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-
-# Add trusted host middleware for production
-if os.getenv("RAILWAY_ENVIRONMENT_NAME") == "production":
-    railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").replace("https://", "")
-    if railway_domain:
-        app.add_middleware(
-            TrustedHostMiddleware, 
-            allowed_hosts=[railway_domain, "localhost"]
-        )
+# Add this debug endpoint to check CORS settings
+@app.get("/cors-debug")
+async def cors_debug():
+    return {
+        "allowed_origins": ALLOWED_ORIGINS,
+        "message": "CORS configuration debug info"
+    }
 
 # Include routers
 app.include_router(room_router, prefix="/api", tags=["Room Management"])
@@ -110,7 +86,6 @@ async def root():
         "message": "LiveKit Video Conference API",
         "status": "running",
         "version": "1.0.0",
-        "environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "development"),
         "endpoints": {
             "generate_token": "/api/token",
             "create_room": "/api/room",
@@ -130,22 +105,10 @@ async def health_check():
             os.getenv("LIVEKIT_API_SECRET") and 
             os.getenv("LIVEKIT_URL")
         ),
-        "environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "development"),
-        "railway_url": os.getenv("RAILWAY_PUBLIC_DOMAIN", "not_set")
+        "environment": os.getenv("RAILWAY_ENVIRONMENT", "development")
     }
 
-# PRODUCTION: Add better error handlers
-@app.exception_handler(500)
-async def internal_server_error_handler(request, exc):
-    logger.error(f"Internal server error: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal server error",
-            "message": "An unexpected error occurred"
-        }
-    )
-
+# Error handlers
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     return JSONResponse(
@@ -166,14 +129,10 @@ async def not_found_handler(request, exc):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    # PRODUCTION: Optimized uvicorn settings
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=port,
-        reload=False,  # Always False in production
-        log_level="info",
-        access_log=True,
-        # PRODUCTION: Add process management
-        workers=1 if os.getenv("RAILWAY_ENVIRONMENT_NAME") == "production" else 1,
+        reload=False,  # Disable reload in production
+        log_level="info"
     )
