@@ -14,11 +14,9 @@ class TokenResponse(BaseModel):
     wsUrl: str
     roomName: str
     participantName: str
-
-# Room-related models
 class CreateRoomRequest(BaseModel):
     roomName: str
-    maxParticipants: Optional[int] = 100  # Updated default
+    maxParticipants: Optional[int] = 10  # More realistic for free tier
     metadata: Optional[str] = None
 
 class RoomInfo(BaseModel):
